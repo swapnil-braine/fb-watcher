@@ -6,6 +6,7 @@ import AccountManager from '@/components/AccountManager'
 import SetupGuide from '@/components/SetupGuide'
 import TwoFactorWarning from '@/components/TwoFactorWarning'
 import LoginTroubleshooting from '@/components/LoginTroubleshooting'
+import LoginTester from '@/components/LoginTester'
 
 export default function Home() {
   return (
@@ -15,6 +16,7 @@ export default function Home() {
         <SetupGuide />
         <TwoFactorWarning />
         <LoginTroubleshooting />
+        <LoginTester />
         <AccountManager />
       </div>
       <FacebookWatcher />

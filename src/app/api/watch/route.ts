@@ -150,10 +150,12 @@ async function watchWithAccount(account: FacebookAccount, url: string) {
         '--disable-dev-shm-usage',
         '--disable-extensions',
         '--disable-plugins',
-        '--disable-images',
-        '--disable-javascript',
-        '--disable-gpu'
-      ]
+        '--disable-gpu',
+        '--window-size=1366,768'
+      ],
+      defaultViewport: null,
+      ignoreDefaultArgs: ['--disable-extensions'],
+      timeout: 60000
     });
     
     const page = await browser.newPage();
@@ -190,65 +192,133 @@ async function watchWithAccount(account: FacebookAccount, url: string) {
         console.log(`Login attempt ${attempts} for ${account.email}`);
         
         // Navigate to Facebook login
+        console.log(`Navigating to Facebook login for ${account.email}`);
         await page.goto('https://www.facebook.com/login', { 
-          waitUntil: 'networkidle2',
+          waitUntil: 'domcontentloaded',
           timeout: 30000 
         });
         
         // Wait for page to fully load
-        await page.waitForTimeout(2000);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Take screenshot for debugging
+        try {
+          await page.screenshot({ path: `debug-login-${account.id}.png` });
+          console.log(`Screenshot saved: debug-login-${account.id}.png`);
+        } catch (screenshotError) {
+          console.log('Screenshot failed:', screenshotError);
+        }
         
         // Try multiple selectors for email field
         const emailSelectors = ['#email', 'input[name="email"]', 'input[type="email"]', '[data-testid="royal_email"]'];
         let emailField = null;
         for (const selector of emailSelectors) {
-          emailField = await page.$(selector);
-          if (emailField) break;
+          try {
+            emailField = await page.$(selector);
+            if (emailField) {
+              console.log(`Found email field with selector: ${selector}`);
+              break;
+            }
+          } catch (e) {
+            console.log(`Email selector ${selector} failed:`, e);
+          }
         }
         
         if (!emailField) {
+          console.log('Email field not found, taking screenshot...');
+          await page.screenshot({ path: `debug-no-email-${account.id}.png` });
           throw new Error('Email field not found');
         }
         
         // Clear and type email
-        await emailField.click({ clickCount: 3 });
-        await page.waitForTimeout(500);
-        await emailField.type(account.email, { delay: 100 });
+        console.log(`Filling email field for ${account.email}`);
+        try {
+          await emailField.click({ clickCount: 3 });
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await emailField.type(account.email, { delay: 150 });
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log('Email filled successfully');
+        } catch (e) {
+          console.log('Error filling email:', e);
+          throw e;
+        }
         
         // Try multiple selectors for password field
         const passwordSelectors = ['#pass', 'input[name="pass"]', 'input[type="password"]', '[data-testid="royal_pass"]'];
         let passwordField = null;
         for (const selector of passwordSelectors) {
-          passwordField = await page.$(selector);
-          if (passwordField) break;
+          try {
+            passwordField = await page.$(selector);
+            if (passwordField) {
+              console.log(`Found password field with selector: ${selector}`);
+              break;
+            }
+          } catch (e) {
+            console.log(`Password selector ${selector} failed:`, e);
+          }
         }
         
         if (!passwordField) {
+          console.log('Password field not found, taking screenshot...');
+          await page.screenshot({ path: `debug-no-password-${account.id}.png` });
           throw new Error('Password field not found');
         }
         
         // Clear and type password
-        await passwordField.click({ clickCount: 3 });
-        await page.waitForTimeout(500);
-        await passwordField.type(account.password, { delay: 100 });
+        console.log(`Filling password field for ${account.email}`);
+        try {
+          await passwordField.click({ clickCount: 3 });
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await passwordField.type(account.password, { delay: 150 });
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log('Password filled successfully');
+        } catch (e) {
+          console.log('Error filling password:', e);
+          throw e;
+        }
         
         // Try multiple selectors for login button
         const loginButtonSelectors = ['#loginbutton', 'button[name="login"]', '[data-testid="royal_login_button"]', 'button[type="submit"]'];
         let loginButton = null;
         for (const selector of loginButtonSelectors) {
-          loginButton = await page.$(selector);
-          if (loginButton) break;
+          try {
+            loginButton = await page.$(selector);
+            if (loginButton) {
+              console.log(`Found login button with selector: ${selector}`);
+              break;
+            }
+          } catch (e) {
+            console.log(`Login button selector ${selector} failed:`, e);
+          }
         }
         
         if (!loginButton) {
+          console.log('Login button not found, taking screenshot...');
+          await page.screenshot({ path: `debug-no-login-button-${account.id}.png` });
           throw new Error('Login button not found');
         }
         
         // Click login button
-        await loginButton.click();
+        console.log(`Clicking login button for ${account.email}`);
+        try {
+          await loginButton.click();
+          console.log('Login button clicked successfully');
+        } catch (e) {
+          console.log('Error clicking login button:', e);
+          throw e;
+        }
         
         // Wait for navigation or response
-        await page.waitForTimeout(5000);
+        console.log(`Waiting for login response for ${account.email}`);
+        await new Promise(resolve => setTimeout(resolve, 8000));
+        
+        // Take screenshot after login attempt
+        try {
+          await page.screenshot({ path: `debug-after-login-${account.id}.png` });
+          console.log(`Screenshot saved: debug-after-login-${account.id}.png`);
+        } catch (screenshotError) {
+          console.log('Screenshot after login failed:', screenshotError);
+        }
         
         // Check for various Facebook responses
         const currentUrl = page.url();
@@ -264,13 +334,19 @@ async function watchWithAccount(account: FacebookAccount, url: string) {
         
         let twoFactorDetected = false;
         for (const selector of twoFactorSelectors) {
-          if (await page.$(selector)) {
-            twoFactorDetected = true;
-            break;
+          try {
+            if (await page.$(selector)) {
+              twoFactorDetected = true;
+              console.log(`2FA detected with selector: ${selector}`);
+              break;
+            }
+          } catch (e) {
+            console.log(`2FA selector ${selector} failed:`, e);
           }
         }
         
         if (twoFactorDetected) {
+          console.log('2FA detected, returning error');
           return {
             success: false,
             message: '2FA required - please disable 2FA for this account or use app-specific password'
@@ -289,15 +365,21 @@ async function watchWithAccount(account: FacebookAccount, url: string) {
         let errorDetected = false;
         let errorMessage = '';
         for (const selector of errorSelectors) {
-          const errorElement = await page.$(selector);
-          if (errorElement) {
-            errorMessage = await page.evaluate(el => el.textContent, errorElement) || 'Login error detected';
-            errorDetected = true;
-            break;
+          try {
+            const errorElement = await page.$(selector);
+            if (errorElement) {
+              errorMessage = await page.evaluate(el => el.textContent, errorElement) || 'Login error detected';
+              errorDetected = true;
+              console.log(`Error detected with selector ${selector}: ${errorMessage}`);
+              break;
+            }
+          } catch (e) {
+            console.log(`Error selector ${selector} failed:`, e);
           }
         }
         
         if (errorDetected) {
+          console.log('Login error detected, returning error');
           return {
             success: false,
             message: `Login failed: ${errorMessage}`
@@ -316,15 +398,21 @@ async function watchWithAccount(account: FacebookAccount, url: string) {
         
         let loginSuccessful = false;
         for (const selector of successSelectors) {
-          if (await page.$(selector)) {
-            loginSuccessful = true;
-            break;
+          try {
+            if (await page.$(selector)) {
+              loginSuccessful = true;
+              console.log(`Login success detected with selector: ${selector}`);
+              break;
+            }
+          } catch (e) {
+            console.log(`Success selector ${selector} failed:`, e);
           }
         }
         
         // Also check if we're no longer on login page
         if (!currentUrl.includes('login') && !currentUrl.includes('checkpoint')) {
           loginSuccessful = true;
+          console.log('Login success detected via URL change');
         }
         
         if (loginSuccessful) {
@@ -332,15 +420,24 @@ async function watchWithAccount(account: FacebookAccount, url: string) {
           console.log(`Login successful for ${account.email}`);
         } else {
           console.log(`Login failed for ${account.email}, attempt ${attempts}`);
-          if (attempts < maxAttempts) {
-            await page.waitForTimeout(2000);
+          console.log(`Current URL: ${currentUrl}`);
+          
+          // Check if we're on a different page that might indicate success
+          if (currentUrl.includes('facebook.com') && !currentUrl.includes('login')) {
+            console.log(`Detected successful login via URL change for ${account.email}`);
+            loginSuccess = true;
+          } else if (attempts < maxAttempts) {
+            console.log(`Retrying login for ${account.email} in 3 seconds...`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
           }
         }
         
       } catch (attemptError) {
         console.log(`Login attempt ${attempts} failed: ${attemptError}`);
+        console.log(`Error details:`, attemptError);
         if (attempts < maxAttempts) {
-          await page.waitForTimeout(2000);
+          console.log(`Retrying in 3 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
       }
     }
@@ -354,8 +451,12 @@ async function watchWithAccount(account: FacebookAccount, url: string) {
     
     // Navigate to the target URL
     try {
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-      await page.waitForTimeout(3000);
+      console.log(`Navigating to target URL: ${url}`);
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Take screenshot of target page
+      await page.screenshot({ path: `debug-target-page-${account.id}.png` });
       
       // Try to interact with the video/story
       const playButtonSelectors = [
@@ -363,27 +464,33 @@ async function watchWithAccount(account: FacebookAccount, url: string) {
         '[aria-label*="play"]',
         'button[aria-label*="Play"]',
         '.playButton',
-        '[data-testid="play_button"]'
+        '[data-testid="play_button"]',
+        'button[aria-label*="Watch"]',
+        '[data-testid="video_play_button"]'
       ];
       
+      let interactionSuccess = false;
       for (const selector of playButtonSelectors) {
         const playButton = await page.$(selector);
         if (playButton) {
+          console.log(`Found play button with selector: ${selector}`);
           await playButton.click();
-          await page.waitForTimeout(2000);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          interactionSuccess = true;
           break;
         }
       }
       
       // Wait a bit to simulate viewing
-      await page.waitForTimeout(5000);
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       return {
         success: true,
-        message: 'Successfully viewed content'
+        message: interactionSuccess ? 'Successfully viewed content' : 'Content loaded but no play button found'
       };
       
     } catch (navigationError) {
+      console.log(`Navigation error: ${navigationError}`);
       return {
         success: true,
         message: 'Content loaded but interaction failed'
@@ -398,7 +505,18 @@ async function watchWithAccount(account: FacebookAccount, url: string) {
     };
   } finally {
     if (browser) {
-      await browser.close();
+      console.log(`Closing browser for ${account.email}`);
+      // Add longer delay before closing to ensure all operations complete
+      try {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      } catch (e) {
+        console.log('Page already closed or error waiting');
+      }
+      try {
+        await browser.close();
+      } catch (e) {
+        console.log('Browser already closed or error closing');
+      }
     }
   }
 }
