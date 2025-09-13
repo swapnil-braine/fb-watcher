@@ -5,6 +5,7 @@ import FacebookWatcher from '@/components/FacebookWatcher'
 import AccountManager from '@/components/AccountManager'
 import SetupGuide from '@/components/SetupGuide'
 import TwoFactorWarning from '@/components/TwoFactorWarning'
+import LoginTroubleshooting from '@/components/LoginTroubleshooting'
 
 export default function Home() {
   return (
@@ -13,6 +14,7 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-6 space-y-6">
         <SetupGuide />
         <TwoFactorWarning />
+        <LoginTroubleshooting />
         <AccountManager />
       </div>
       <FacebookWatcher />
